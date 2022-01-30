@@ -5,7 +5,7 @@ import faces_train
 real_time_feed = cv2.VideoCapture(0)
 haar_cascade = cv2.CascadeClassifier('haar_face.xml')
 people=[]
-for i in os.listdir(r"C:\Users\navan\PycharmProjects\FaceRecognition\faces"):
+for i in os.listdir(faces_train.variable()):
     people.append(i)
 face_recognizer = cv2.face.LBPHFaceRecognizer_create()
 face_recognizer.read('face_trained.yml')
