@@ -1,32 +1,38 @@
-'''Welcome to our CCTV Camera
-Our project can be put into use where we require extreme protection
-to store valuable things.
-This project will detect even if there is a simple movement
-and therefore this is a very efficient tool in places like museums ,jewellery shop etc.'''
-
-import cv2,time
-video = cv2.VideoCapture(0) #We are using 0 channel for webcam
-first_frame = None
+import os
+import cv2
+import winsound
+import faces_train
+real_time_feed = cv2.VideoCapture(0)
+haar_cascade = cv2.CascadeClassifier('haar_face.xml')
+people=[]
+for i in os.listdir(r"C:\Users\navan\PycharmProjects\FaceRecognition\faces"):
+    people.append(i)
+face_recognizer = cv2.face.LBPHFaceRecognizer_create()
+face_recognizer.read('face_trained.yml')
 while True:
-    check ,frame = video.read()
-    gray = cv2.cvtColor(frame ,cv2.COLOR_BGR2GRAY) #To inc the accuracy of the detection
-    gray = cv2.GaussianBlur(gray,(21,21),0)
-    #Motion is identified from a ref point. And hence ref point is reqd. So our first frame is set as ref frame.
-    if first_frame is None:
-        first_frame = gray
-        continue
-    delta_frame = cv2.absdiff(first_frame,gray)
-    threshold_frame=cv2.threshold(delta_frame,50,255,cv2.THRESH_BINARY)[1]
-    threshold_frame=cv2.dilate(threshold_frame,None,iterations=2)
-    (cntr,_)=cv2.findContours(threshold_frame.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    for contour in cntr:
-        if cv2.contourArea(contour)<1000:
-            continue
-        (x,y,w,h)=cv2.boundingRect(contour) #WHY?
-        cv2.rectangle(frame,(x,y),(x+y,y+h),(0,255,0),3)
-    cv2.imshow("cvghj",frame)
-    key=cv2.waitKey(1)
-    if key==ord('q'):
+    check, frame1 = real_time_feed.read()
+    check, frame2 = real_time_feed.read()
+    diff = cv2.absdiff(frame1, frame2)
+    gray = cv2.cvtColor(diff, cv2.COLOR_RGB2GRAY)
+    blur = cv2.GaussianBlur(gray,(21,21),0)
+    _, thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+    dilated = cv2.dilate(thresh, None, iterations=3)
+    faces_rect = haar_cascade.detectMultiScale(dilated, scaleFactor=1.2,minNeighbors=4)
+    for (x, y, w, h) in faces_rect:
+        faces_roi = gray[y:y + h, x:x + w]
+        label, confidence = face_recognizer.predict(faces_roi)
+        if confidence<100:
+            #print(f'Label = {people[label]} with a confidence of {confidence}')
+            cv2.putText(frame1, str(people[label]), (20, 20),cv2.FONT_HERSHEY_PLAIN, 1.0, (0, 255, 0), thickness=2)
+            cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255, 0), thickness=3)
+        else:
+            winsound.PlaySound("mixkit-truck-reversing-beeps-loop-1077.wav",winsound.SND_ASYNC)
+            #print('INTRUDER ALERT')
+            cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 0, 255), thickness=3)
+            cv2.putText(frame1, "INTRUDER ALLERT", (20, 20),cv2.FONT_HERSHEY_PLAIN, 1.0, (0,0,255), thickness=2)
+
+    if cv2.waitKey(10) == ord('q'):
         break
-video.release()
+    cv2.imshow('VIDEO_FEED', frame1)
+real_time_feed.release()
 cv2.destroyAllWindows()
